@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Verifiers vs Tools</title>
+<meta name="description" content="Why 33 verifier rules came out, and which reading gaps belong in Jacob's tools.">
+<style>
+:root {
+  --bg: #F4F6F8; --paper: #FFFFFF; --ink: #18202B; --muted: #5B6675; --line: #D5DBE2;
+  --tool: #13756F; --tool-bg: #E3F2F0;
+  --judge: #4338A8; --judge-bg: #E9E7F8;
+  --drop: #7F8896; --drop-bg: #ECEEF1;
+  --warn: #9A5606; --warn-bg: #FBF0DF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161C; --paper: #181D25; --ink: #E7EBF0; --muted: #9AA5B3; --line: #2A323D;
+    --tool: #4FC1B8; --tool-bg: #15302E;
+    --judge: #A59CF5; --judge-bg: #232045;
+    --drop: #8C95A2; --drop-bg: #1F252D;
+    --warn: #E3A24A; --warn-bg: #33260F;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161C; --paper: #181D25; --ink: #E7EBF0; --muted: #9AA5B3; --line: #2A323D;
+  --tool: #4FC1B8; --tool-bg: #15302E;
+  --judge: #A59CF5; --judge-bg: #232045;
+  --drop: #8C95A2; --drop-bg: #1F252D;
+  --warn: #E3A24A; --warn-bg: #33260F;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px; line-height: 1.55; font-feature-settings: "tnum" 1;
+}
+main { max-width: 760px; margin: 0 auto; padding: 48px 16px 96px; }
+.wide { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+h1 { font-size: clamp(2rem, 6vw, 3.3rem); line-height: 1.04; letter-spacing: -0.025em; margin: 0 0 20px; font-weight: 750; }
+h1 .j { color: var(--judge); display: block; }
+h1 .t { color: var(--tool); display: block; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 64px 0 12px; line-height: 1.2; }
+h3 { font-size: 1.05rem; margin: 0 0 6px; }
+p { margin: 0 0 14px; max-width: 68ch; }
+.lede { font-size: 1.15rem; color: var(--ink); }
+.from { color: var(--muted); font-size: 0.95rem; margin-bottom: 36px; }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88em; background: var(--drop-bg); padding: 1px 5px; border-radius: 4px; }
+.caution { background: var(--warn-bg); color: var(--ink); border-left: 4px solid var(--warn); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+.caution strong { color: var(--warn); }
+
+/* The sort: the one moving part of the page */
+.sort { margin: 40px auto 8px; }
+.sort-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.sort-head p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.replay { font: inherit; font-size: 0.9rem; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.replay:focus-visible, a:focus-visible { outline: 3px solid var(--judge); outline-offset: 2px; }
+.bins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.bin { border-radius: 14px; padding: 16px 14px 18px; min-height: 100%; }
+.bin h3 { display: flex; justify-content: space-between; gap: 8px; }
+.bin h3 span { font-variant-numeric: tabular-nums; }
+.bin p { font-size: 0.9rem; margin: 0 0 12px; color: var(--muted); }
+.bin.tool { background: var(--tool-bg); } .bin.tool h3 { color: var(--tool); }
+.bin.drop { background: var(--drop-bg); } .bin.drop h3 { color: var(--drop); }
+.bin.judge { background: var(--judge-bg); } .bin.judge h3 { color: var(--judge); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.74rem; padding: 3px 8px; border-radius: 6px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); white-space: nowrap; }
+.drop .chip { color: var(--drop); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--drop) 70%, transparent); }
+.sorting .chip { animation: fall 620ms cubic-bezier(.2,.8,.25,1) both; animation-delay: calc(var(--i) * 45ms); }
+@keyframes fall { from { opacity: 0; transform: translateY(-46px) rotate(-4deg); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sorting .chip { animation: none; } }
+
+/* Principle */
+.rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+.rule { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.rule.j { border-top: 4px solid var(--judge); } .rule.t { border-top: 4px solid var(--tool); }
+.rule ul { margin: 6px 0 0; padding-left: 18px; } .rule li { margin: 4px 0; }
+.rule.none { grid-column: 1 / -1; border-top: 4px solid var(--drop); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font-weight: 650; color: var(--muted); font-size: 0.85rem; }
+tr:last-child td { border-bottom: 0; }
+td.num { text-align: right; white-space: nowrap; }
+td .name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.8rem; color: var(--tool); display: block; margin-bottom: 3px; }
+.gaps td:first-child { min-width: 230px; }
+.list { columns: 2; column-gap: 28px; padding-left: 18px; margin: 10px 0; }
+.list li { break-inside: avoid; margin: 0 0 8px; font-size: 0.93rem; }
+.list code { font-size: 0.8em; }
+ol.asks li { margin: 0 0 10px; }
+footer { color: var(--muted); font-size: 0.85rem; margin-top: 64px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+@media (max-width: 760px) {
+  .bins, .rule-grid { grid-template-columns: 1fr; }
+  .list { columns: 1; }
+  main { padding-top: 32px; }
+}
+</style>
+</head>
+<body>
+<main style="padding-bottom:0">
+  <h1><span class="j">Verifiers judge the business.</span><span class="t">Tools read the world.</span></h1>
+  <p class="lede">The automation runs spent most of their tokens on new verifier rules. Many of those rules patched a data read or checked the AI's own paperwork. Will removed those and kept the ones that judge the business. The reading gaps are real, though, and they belong in tools. This page lists them for you.</p>
+  <p class="from">From Will, written with Claude, October 16, 2026.</p>
+</main>
+
+<section class="wide sort" aria-labelledby="sort-title">
+  <div class="sort-head">
+    <h2 id="sort-title" style="margin:0">The 33 rules Will did not want, sorted by their real job</h2>
+    <button class="replay" type="button" id="replay">Sort again</button>
+  </div>
+  <p style="color:var(--muted);font-size:.95rem">The runs started 52 gate changes on Oct 15 and 16. Will kept 19 (client setup and safety). These are the other 33.</p>
+  <div class="bins" id="bins">
+    <div class="bin tool">
+      <h3>A tool should read this <span>9</span></h3>
+      <p>The data read was wrong or missing, so the agent wrote a verifier rule around it.</p>
+      <div class="chips">
+        <span class="chip">account-data-concurrent-pulls</span><span class="chip">msads-accounts-tool</span><span class="chip">manager-old-meetings</span><span class="chip">story-client-words-every-mailbox</span><span class="chip">inbox-will-chose-no-reply</span><span class="chip">chad-task-still-true</span><span class="chip">audit-page-budget-and-keyword-fix</span><span class="chip">audit-after-span-untrusted</span><span class="chip">manager-business-name-level</span>
+      </div>
+    </div>
+    <div class="bin drop">
+      <h3>The AI's own outputs, dropped <span>14</span></h3>
+      <p>Checks on the agents' own story, CRM log rows, audit wording and email number parsing.</p>
+      <div class="chips">
+        <span class="chip">story-cites-correction</span><span class="chip">story-daily-fails-past-change-runs</span><span class="chip">crm-note-dates-in-source</span><span class="chip">crm-two-writes-one-run</span><span class="chip">crm-readback-old-problems-service-ids</span><span class="chip">crm-readback-service-contact</span><span class="chip">audit-no-conductor</span><span class="chip">audit-findings-carry-numbers</span><span class="chip">audit-text-no-semicolons</span><span class="chip">audit-readback-reasons</span><span class="chip">manager-number-in-a-name</span><span class="chip">manager-count-not-money</span><span class="chip">manager-numbers-each</span><span class="chip">manager-conversion-action-setting</span>
+      </div>
+    </div>
+    <div class="bin judge">
+      <h3>Business logic, kept <span>10</span></h3>
+      <p>These judge the account, so they stay in the verifiers.</p>
+      <div class="chips">
+        <span class="chip">audit-pmax-strategy-fix</span><span class="chip">audit-grow-search-only</span><span class="chip">meta-ma43-stage-theme</span><span class="chip">audit-no-default-currency</span><span class="chip">brand-share-current-keywords</span><span class="chip">audit-brand-leak-current-keywords</span><span class="chip">ga23-documented-defaults</span><span class="chip">google-made-links</span><span class="chip">ga44-eloqua-clients-only</span><span class="chip">conv-action-counted-and-readback</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main style="padding-top:0">
+  <h2>The line between a verifier and a tool</h2>
+  <p>A verifier answers one question: is this right for the business? To answer it, the verifier needs true data. Getting true data is the tool's job. When a tool cannot read something, it should say so plainly. The verifier then says it could not judge. It never passes, and it never grows a rule to patch the read.</p>
+  <div class="rule-grid">
+    <div class="rule j">
+      <h3 style="color:var(--judge)">A verifier judges</h3>
+      <ul>
+        <li>Is this change right for this account and its targets?</li>
+        <li>Does the issue really exist, with the right numbers?</li>
+        <li>Does an email to a client say only true things?</li>
+      </ul>
+    </div>
+    <div class="rule t">
+      <h3 style="color:var(--tool)">A tool reads</h3>
+      <ul>
+        <li>Every mailbox the client writes to.</li>
+        <li>A client's last three calls, from any recorder.</li>
+        <li>Account data, pages and tasks, with a clear "could not read" state.</li>
+      </ul>
+    </div>
+    <div class="rule none">
+      <h3 style="color:var(--drop)">Neither one polices the AI's paperwork</h3>
+      <p style="margin:0">Semicolons in audit text, citations between log lines and CRM read-back rows are not business logic. Rules like these made each new output (stories on Oct 15, the CRM step on Oct 16) bring new checks, then false alarms, then more fixes.</p>
+    </div>
+  </div>
+
+  <h2>Why this came up</h2>
+  <p>Will was running out of tokens. We measured the 10 client runs of Oct 15 and 16 (404M tokens, weighted by price).</p>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Where the tokens went</th><th class="num">Share</th></tr>
+      <tr><td>Run work: data pulls, verifier checks, research, account changes, stories</td><td class="num">33%</td></tr>
+      <tr><td>Building verifier rules through the gate</td><td class="num">59%</td></tr>
+      <tr><td>Reading verifier code</td><td class="num">8%</td></tr>
+      <tr><td>Of all tokens: forks that built verifiers (each fork re-reads the run's ~600K context)</td><td class="num">48%</td></tr>
+    </table>
+  </div>
+  <p>Daily use went from 71M on Oct 15 to 333M on Oct 16. In about 48 hours, 88 gate changes merged into the verifiers. Of the build tokens, 66% went to false-alarm and paperwork rules.</p>
+
+  <h2>The reading gaps, for your tools</h2>
+  <p>Today the verifiers read data with their own readers: the pull, the story gather, a meeting reader and a page loader. That is why a read bug turned into a verifier rule. None of these gaps is on the Development tab yet.</p>
+  <div class="table-wrap">
+    <table class="gaps">
+      <tr><th>What went wrong</th><th>Real case</th><th>Where it should live</th></tr>
+      <tr><td><span class="name">manager-old-meetings</span>The meeting reader looked only at the newest 400 recordings. It also skipped tl;dv transcripts that have empty segments.</td><td>KDX's calls were recordings 4,058 to 5,162</td><td>A meetings tool: "the last 3 calls for this client", any recorder</td></tr>
+      <tr><td><span class="name">story-client-words-every-mailbox</span>The story gather read 7 fixed mailboxes.</td><td>Kevin (KDX) writes only to daniel@</td><td>Mail search across every team mailbox in the directory</td></tr>
+      <tr><td><span class="name">inbox-will-chose-no-reply</span>The inbox check cannot see that Will chose not to reply.</td><td>AAFE, Oct 15 (session 81e766e5)</td><td>A mail tool that gives Will's reply decision as a state</td></tr>
+      <tr><td><span class="name">chad-task-still-true</span>ChadBot's "No Recent Conversions" tasks stay open after conversions come back.</td><td>KDX, Oct 16</td><td>Chad: close or refresh its own stale tasks</td></tr>
+      <tr><td><span class="name">account-data-concurrent-pulls</span>Two pulls at once wrote one log, so reads were counted for the wrong run.</td><td>Trailer Jacks, Oct 15 and 16: 7 reads counted as 2</td><td>The pull: one log per run</td></tr>
+      <tr><td><span class="name">msads-accounts-tool</span>The Microsoft Ads refusal named a command that no longer exists.</td><td>Trailer Jacks' Discount Hitch Central (163003670)</td><td>The pull's access message; the pull login needs access to that account</td></tr>
+      <tr><td><span class="name">audit-page-budget-and-keyword-fix</span>The page budget (20 loads per site per hour) left sitelink pages unloaded, and the audit failed them.</td><td>Kogalla Blog and Reviews; a KDX print-devices page</td><td>The page loader: report "not loaded" as its own state</td></tr>
+      <tr><td><span class="name">audit-after-span-untrusted</span>A before-and-after compare mixed days that tracking backs with days it does not.</td><td>KDX, Oct 16</td><td>The account snapshot: mark each day trusted or not</td></tr>
+      <tr><td><span class="name">manager-business-name-level</span>The proposal check did not read the account's business name assets or their levels.</td><td>KeyBar, Oct 16</td><td>The account snapshot reader</td></tr>
+    </table>
+  </div>
+
+  <h2>The 10 business-logic rules stay</h2>
+  <p>These judge the account itself, so they fit a verifier's job. Each one fixed a wrong answer. Two examples: the audit advised manual bidding for Performance Max, which Google does not allow. It also told the agent to add keywords to a Shopping ad group. Will kept all 10.</p>
+
+  <h2>What changed today</h2>
+  <ul>
+    <li>Client runs, the A&amp;R check-in and the Verifier audit never change a verifier. They fix their own work to pass. After 3 tries, they skip the item and log it (Barbara v796, PR #58).</li>
+    <li>A Claude Code hook, <code>run-no-verifier-builds</code>, blocks gate work, cargo, verifier code edits and forks inside those runs.</li>
+    <li>A run logs each new verifier miss in one queue: <code>verifiers/data/clients/dwa/verifier-misses.md</code>. Will picks what gets built. A fresh session builds only setup and safety entries.</li>
+    <li>The 23 reading and paperwork rules are coming out of the verifiers now. When one of the old false alarms comes back, a run logs it and moves on.</li>
+  </ul>
+
+  <h2>Questions for you</h2>
+  <ol class="asks">
+    <li>Do you want these readers in Barbara and Chad tools, so the verifiers only take tool output?</li>
+    <li>Which of the 9 reading gaps do you already cover or plan?</li>
+    <li>Can each tool return a clear "could not read" state, so a verifier says it could not judge instead of failing?</li>
+  </ol>
+
+  <footer>Sources: the run transcripts of Oct 15 and 16, the verifiers' gate merges, and Barbara's tool proposals list. Token shares are weighted by price; the split for each rule is an estimate.</footer>
+</main>
+
+<script>
+(function () {
+  var bins = document.getElementById('bins');
+  var chips = bins.querySelectorAll('.chip');
+  chips.forEach(function (c, i) { c.style.setProperty('--i', i); });
+  function sort() {
+    bins.classList.remove('sorting');
+    void bins.offsetWidth;
+    bins.classList.add('sorting');
+    clearTimeout(sort.t);
+    sort.t = setTimeout(function () { bins.classList.remove('sorting'); }, 2600);
+  }
+  sort();
+  document.getElementById('replay').addEventListener('click', sort);
+})();
+</script>
+</body>
+</html>
